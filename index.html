@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sistem Validasi Lokasi - BPPDAN Project</title>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; }
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f2f5;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 20px;
+        }
+        .container {
+            background: #ffffff;
+            width: 100%;
+            max-width: 400px;
+            padding: 30px;
+            border-radius: 16px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
+            text-align: center;
+        }
+        .logo {
+            font-size: 24px;
+            font-weight: 600;
+            color: #1a73e8;
+            margin-bottom: 10px;
+        }
+        p { color: #5f6368; margin-bottom: 25px; line-height: 1.5; }
+        
+        #btnMasuk {
+            background-color: #1a73e8;
+            color: white;
+            border: none;
+            padding: 15px 30px;
+            width: 100%;
+            border-radius: 8px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: background 0.3s;
+        }
+        #btnMasuk:disabled { background-color: #ccc; cursor: not-allowed; }
+        
+        #status-container {
+            margin-top: 20px;
+            padding: 15px;
+            border-radius: 8px;
+            display: none; /* Sembunyi sebelum digunakan */
+            text-align: left;
+            font-size: 14px;
+        }
+        .loading { background-color: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
+        .success { background-color: #e6f4ea; color: #1e8e3e; border: 1px solid #ceead6; }
+        .error { background-color: #fce8e6; color: #d93025; border: 1px solid #fad2cf; }
+
+        .data-label { font-weight: 600; color: #3c4043; }
+        hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="logo">BPPDAN Login</div>
+    <p>Silakan klik tombol di bawah untuk melakukan absensi kehadiran berbasis lokasi.</p>
+    
+    <button id="btnMasuk">MASUK SEKARANG</button>
+
+    <div id="status-container">
+        <div id="status-text">Menyiapkan...</div>
+        <div id="result-details" style="display:none;">
+            <hr>
+            <p><span class="data-label">Latitude:</span> <span id="lat">-</span></p>
+            <p><span class="data-label">Longitude:</span> <span id="lng">-</span></p>
+            <p><span class="data-label">Akurasi:</span> <span id="acc">-</span> meter</p>
+            <p><span class="data-label">Waktu:</span> <br><small id="time">-</small></p>
+        </div>
+    </div>
+</div>
+
+<script>
+    const btn = document.getElementById('btnMasuk');
+    const statusBox = document.getElementById('status-container');
+    const statusText = document.getElementById('status-text');
+    const resultDetails = document.getElementById('result-details');
+
+    btn.addEventListener('click', () => {
+        // 1. Cek Dukungan Browser
+        if (!navigator.geolocation) {
+            updateStatus("Browser Anda tidak mendukung lokasi.", "error");
+            return;
+        }
+
+        // 2. Tampilkan Loading
+        btn.disabled = true;
+        updateStatus("Sedang mengambil titik koordinat GPS...", "loading");
+
+        // 3. Konfigurasi High Accuracy (Penting untuk Android)
+        const geoOptions = {
+            enableHighAccuracy: true, // Menggunakan GPS jika tersedia
+            timeout: 15000,          // Menunggu maksimal 15 detik
+            maximumAge: 0            // Selalu minta data terbaru
+        };
+
+        navigator.geolocation.getCurrentPosition(onSuccess, onError, geoOptions);
+    });
+
+    function onSuccess(position) {
+        const lat = position.coords.latitude;
+        const lng = position.coords.longitude;
+        const acc = position.coords.accuracy.toFixed(2);
+        const timestamp = new Date(position.timestamp).toLocaleString('id-ID');
+
+        // Tampilkan Data ke UI
+        document.getElementById('lat').textContent = lat;
+        document.getElementById('lng').textContent = lng;
+        document.getElementById('acc').textContent = acc;
+        document.getElementById('time').textContent = timestamp;
+
+        updateStatus("Lokasi berhasil dikunci!", "success");
+        resultDetails.style.display = "block";
+        btn.disabled = false;
+        btn.textContent = "UPDATE LOKASI";
+
+        // DI SINI: Tempat Anda menambahkan kode FETCH 
+        // untuk mengirim data ke database MySQL/PHP/Python nanti.
+        console.log("Data siap dikirim ke backend:", { lat, lng, acc });
+    }
+
+    function onError(error) {
+        btn.disabled = false;
+        let msg = "";
+        switch(error.code) {
+            case error.PERMISSION_DENIED:
+                msg = "Akses ditolak. Mohon aktifkan izin lokasi di browser Anda.";
+                break;
+            case error.POSITION_UNAVAILABLE:
+                msg = "Informasi lokasi tidak tersedia. Pastikan GPS menyala.";
+                break;
+            case error.TIMEOUT:
+                msg = "Waktu habis. Pastikan Anda berada di area terbuka.";
+                break;
+            default:
+                msg = "Terjadi kesalahan sistem.";
+        }
+        updateStatus(msg, "error");
+    }
+
+    function updateStatus(text, type) {
+        statusBox.style.display = "block";
+        statusBox.className = type;
+        statusText.textContent = text;
+    }
+</script>
+
+</body>
+</html>
