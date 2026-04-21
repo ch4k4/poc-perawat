@@ -3,158 +3,118 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Sistem Validasi Lokasi - BPPDAN Project</title>
+    <title>PoC GPS Log - GitHub API</title>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
-        body {
-            font-family: 'Inter', sans-serif;
-            background-color: #f0f2f5;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 20px;
-        }
-        .container {
-            background: #ffffff;
-            width: 100%;
-            max-width: 400px;
-            padding: 30px;
-            border-radius: 16px;
-            box-shadow: 0 10px 25px rgba(0,0,0,0.1);
-            text-align: center;
-        }
-        .logo {
-            font-size: 24px;
-            font-weight: 600;
-            color: #1a73e8;
-            margin-bottom: 10px;
-        }
-        p { color: #5f6368; margin-bottom: 25px; line-height: 1.5; }
-        
-        #btnMasuk {
-            background-color: #1a73e8;
-            color: white;
-            border: none;
-            padding: 15px 30px;
-            width: 100%;
-            border-radius: 8px;
-            font-size: 16px;
-            font-weight: 600;
-            cursor: pointer;
-            transition: background 0.3s;
-        }
-        #btnMasuk:disabled { background-color: #ccc; cursor: not-allowed; }
-        
-        #status-container {
-            margin-top: 20px;
-            padding: 15px;
-            border-radius: 8px;
-            display: none; /* Sembunyi sebelum digunakan */
-            text-align: left;
-            font-size: 14px;
-        }
-        .loading { background-color: #e8f0fe; color: #1967d2; border: 1px solid #d2e3fc; }
-        .success { background-color: #e6f4ea; color: #1e8e3e; border: 1px solid #ceead6; }
-        .error { background-color: #fce8e6; color: #d93025; border: 1px solid #fad2cf; }
-
-        .data-label { font-weight: 600; color: #3c4043; }
-        hr { border: 0; border-top: 1px solid #eee; margin: 10px 0; }
+        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
+        .card { background: white; width: 100%; max-width: 400px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; }
+        h2 { color: #333; margin-bottom: 10px; font-size: 20px; }
+        p { color: #666; font-size: 14px; margin-bottom: 20px; }
+        #btnMasuk { background-color: #24292e; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; font-weight: 600; cursor: pointer; }
+        #btnMasuk:disabled { background-color: #999; }
+        #status { margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 13px; display: none; }
+        .loading { background: #e1f5fe; color: #0288d1; }
+        .success { background: #e8f5e9; color: #2e7d32; }
+        .error { background: #ffebee; color: #c62828; }
     </style>
 </head>
 <body>
 
-<div class="container">
-    <div class="logo">BPPDAN Login</div>
-    <p>Silakan klik tombol di bawah untuk melakukan absensi kehadiran berbasis lokasi.</p>
+<div class="card">
+    <h2>Sistem Log Lokasi</h2>
+    <p>Klik tombol di bawah untuk mencatat lokasi Anda ke file log GitHub.</p>
     
-    <button id="btnMasuk">MASUK SEKARANG</button>
-
-    <div id="status-container">
-        <div id="status-text">Menyiapkan...</div>
-        <div id="result-details" style="display:none;">
-            <hr>
-            <p><span class="data-label">Latitude:</span> <span id="lat">-</span></p>
-            <p><span class="data-label">Longitude:</span> <span id="lng">-</span></p>
-            <p><span class="data-label">Akurasi:</span> <span id="acc">-</span> meter</p>
-            <p><span class="data-label">Waktu:</span> <br><small id="time">-</small></p>
-        </div>
-    </div>
+    <button id="btnMasuk">KIRIM LOKASI KE GITHUB</button>
+    <div id="status"></div>
 </div>
 
 <script>
+    // --- KONFIGURASI GITHUB (WAJIB DIISI) ---
+    const GITHUB_TOKEN = "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";
+    const REPO_OWNER = "ch4k4";
+    const REPO_NAME = "poc-perawat";
+    const FILE_PATH = "log_lokasi.txt"; 
+
     const btn = document.getElementById('btnMasuk');
-    const statusBox = document.getElementById('status-container');
-    const statusText = document.getElementById('status-text');
-    const resultDetails = document.getElementById('result-details');
+    const statusDiv = document.getElementById('status');
 
     btn.addEventListener('click', () => {
-        // 1. Cek Dukungan Browser
         if (!navigator.geolocation) {
-            updateStatus("Browser Anda tidak mendukung lokasi.", "error");
+            showStatus("Browser tidak mendukung GPS", "error");
             return;
         }
 
-        // 2. Tampilkan Loading
         btn.disabled = true;
-        updateStatus("Sedang mengambil titik koordinat GPS...", "loading");
+        showStatus("Mengambil GPS...", "loading");
 
-        // 3. Konfigurasi High Accuracy (Penting untuk Android)
-        const geoOptions = {
-            enableHighAccuracy: true, // Menggunakan GPS jika tersedia
-            timeout: 15000,          // Menunggu maksimal 15 detik
-            maximumAge: 0            // Selalu minta data terbaru
-        };
-
-        navigator.geolocation.getCurrentPosition(onSuccess, onError, geoOptions);
+        navigator.geolocation.getCurrentPosition(async (pos) => {
+            const { latitude, longitude, accuracy } = pos.coords;
+            showStatus("GPS didapat, mengunggah ke GitHub...", "loading");
+            
+            await simpanKeGithub(latitude, longitude, accuracy);
+        }, (err) => {
+            showStatus("Gagal ambil lokasi: " + err.message, "error");
+            btn.disabled = false;
+        }, { enableHighAccuracy: true });
     });
 
-    function onSuccess(position) {
-        const lat = position.coords.latitude;
-        const lng = position.coords.longitude;
-        const acc = position.coords.accuracy.toFixed(2);
-        const timestamp = new Date(position.timestamp).toLocaleString('id-ID');
+    async function simpanKeGithub(lat, lng, acc) {
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        const timestamp = new Date().toLocaleString('id-ID');
+        const barisBaru = `Waktu: ${timestamp} | Lat: ${lat} | Lng: ${lng} | Acc: ${acc.toFixed(1)}m\n`;
 
-        // Tampilkan Data ke UI
-        document.getElementById('lat').textContent = lat;
-        document.getElementById('lng').textContent = lng;
-        document.getElementById('acc').textContent = acc;
-        document.getElementById('time').textContent = timestamp;
+        try {
+            let sha = "";
+            let kontenLama = "";
 
-        updateStatus("Lokasi berhasil dikunci!", "success");
-        resultDetails.style.display = "block";
-        btn.disabled = false;
-        btn.textContent = "UPDATE LOKASI";
+            // 1. Ambil file lama jika ada (untuk mendapatkan SHA)
+            const getRes = await fetch(url, {
+                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
+            });
 
-        // DI SINI: Tempat Anda menambahkan kode FETCH 
-        // untuk mengirim data ke database MySQL/PHP/Python nanti.
-        console.log("Data siap dikirim ke backend:", { lat, lng, acc });
-    }
+            if (getRes.ok) {
+                const data = await getRes.json();
+                sha = data.sha;
+                kontenLama = atob(data.content); // Decode Base64 ke Teks
+            }
 
-    function onError(error) {
-        btn.disabled = false;
-        let msg = "";
-        switch(error.code) {
-            case error.PERMISSION_DENIED:
-                msg = "Akses ditolak. Mohon aktifkan izin lokasi di browser Anda.";
-                break;
-            case error.POSITION_UNAVAILABLE:
-                msg = "Informasi lokasi tidak tersedia. Pastikan GPS menyala.";
-                break;
-            case error.TIMEOUT:
-                msg = "Waktu habis. Pastikan Anda berada di area terbuka.";
-                break;
-            default:
-                msg = "Terjadi kesalahan sistem.";
+            // 2. Gabungkan data & Encode ke Base64 (Syarat GitHub API)
+            const kontenFinal = btoa(unescape(encodeURIComponent(kontenLama + barisBaru)));
+
+            // 3. Update File
+            const putRes = await fetch(url, {
+                method: 'PUT',
+                headers: {
+                    'Authorization': `token ${GITHUB_TOKEN}`,
+                    'Content-Type': 'application/json'
+                },
+                body: JSON.stringify({
+                    message: "Log lokasi otomatis",
+                    content: kontenFinal,
+                    sha: sha 
+                })
+            });
+
+            if (putRes.ok) {
+                showStatus("Berhasil! Data tersimpan di log_lokasi.txt", "success");
+                btn.textContent = "TERKIRIM";
+            } else {
+                const errData = await putRes.json();
+                showStatus("Gagal Simpan: " + errData.message, "error");
+                btn.disabled = false;
+            }
+
+        } catch (error) {
+            showStatus("Error koneksi API", "error");
+            btn.disabled = false;
         }
-        updateStatus(msg, "error");
     }
 
-    function updateStatus(text, type) {
-        statusBox.style.display = "block";
-        statusBox.className = type;
-        statusText.textContent = text;
+    function showStatus(text, type) {
+        statusDiv.style.display = "block";
+        statusDiv.className = type;
+        statusDiv.textContent = text;
     }
 </script>
 
