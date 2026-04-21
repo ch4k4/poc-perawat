@@ -60,7 +60,8 @@
     });
 
     async function simpanKeGithub(lat, lng, acc) {
-        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        // const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
+        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/${FILE_PATH}`;
         const timestamp = new Date().toLocaleString('id-ID');
         const barisBaru = `Waktu: ${timestamp} | Lat: ${lat} | Lng: ${lng} | Acc: ${acc.toFixed(1)}m\n`;
 
