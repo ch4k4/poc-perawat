@@ -3,119 +3,86 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>PoC GPS Log - GitHub API</title>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600&display=swap" rel="stylesheet">
+    <title>Portal Presensi Klinik - Mobile</title>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; }
-        body { font-family: 'Inter', sans-serif; background-color: #f4f7f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 20px; }
-        .card { background: white; width: 100%; max-width: 400px; padding: 25px; border-radius: 12px; box-shadow: 0 4px 15px rgba(0,0,0,0.08); text-align: center; }
-        h2 { color: #333; margin-bottom: 10px; font-size: 20px; }
-        p { color: #666; font-size: 14px; margin-bottom: 20px; }
-        #btnMasuk { background-color: #24292e; color: white; border: none; padding: 14px; width: 100%; border-radius: 6px; font-weight: 600; cursor: pointer; }
-        #btnMasuk:disabled { background-color: #999; }
-        #status { margin-top: 15px; padding: 10px; border-radius: 6px; font-size: 13px; display: none; }
-        .loading { background: #e1f5fe; color: #0288d1; }
-        .success { background: #e8f5e9; color: #2e7d32; }
-        .error { background: #ffebee; color: #c62828; }
+        body { font-family: 'Poppins', sans-serif; background-color: #eef2f7; margin: 0; display: flex; justify-content: center; align-items: center; min-height: 100vh; }
+        .app-card { background: white; width: 90%; max-width: 400px; border-radius: 20px; box-shadow: 0 10px 30px rgba(0,0,0,0.05); overflow: hidden; }
+        .header { background: #00a896; color: white; padding: 30px 20px; text-align: center; }
+        .header h1 { margin: 0; font-size: 20px; }
+        .header p { margin: 5px 0 0; font-size: 13px; opacity: 0.9; }
+        .content { padding: 25px; }
+        .input-group { margin-bottom: 20px; text-align: left; }
+        label { display: block; font-size: 12px; color: #666; margin-bottom: 5px; }
+        input { width: 100%; padding: 12px; border: 1px solid #ddd; border-radius: 8px; box-sizing: border-box; }
+        button { background: #00a896; color: white; border: none; width: 100%; padding: 15px; border-radius: 10px; font-weight: 600; cursor: pointer; transition: 0.3s; }
+        button:active { transform: scale(0.98); }
+        button:disabled { background: #ccc; }
+        #msg { margin-top: 15px; font-size: 13px; padding: 10px; border-radius: 8px; display: none; text-align: center; }
+        .info { background: #e0f2f1; color: #00796b; }
+        .err { background: #ffebee; color: #c62828; }
     </style>
 </head>
 <body>
 
-<div class="card">
-    <h2>Sistem Log Lokasi</h2>
-    <p>Klik tombol di bawah untuk mencatat lokasi Anda ke file log GitHub.</p>
-    
-    <button id="btnMasuk">KIRIM LOKASI KE GITHUB</button>
-    <div id="status"></div>
+<div class="app-card">
+    <div class="header">
+        <h1>Klinik Sehat Digital</h1>
+        <p>Verifikasi Kehadiran Perawat</p>
+    </div>
+    <div class="content">
+        <div class="input-group">
+            <label>Nama Lengkap Perawat</label>
+            <input type="text" id="nama" placeholder="Masukkan nama Anda">
+        </div>
+        <button id="btnKirim">KONFIRMASI LOKASI</button>
+        <div id="msg"></div>
+    </div>
 </div>
 
 <script>
-    // --- KONFIGURASI GITHUB (WAJIB DIISI) ---
-    const GITHUB_TOKEN = "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";
-    const REPO_OWNER = "ch4k4";
-    const REPO_NAME = "poc-perawat";
-    const FILE_PATH = "log_lokasi.txt"; 
-
-    const btn = document.getElementById('btnMasuk');
-    const statusDiv = document.getElementById('status');
+    const SCRIPT_URL = "PASTE_URL_WEB_APP_GOOGLE_ANDA_DI_SINI";
+    const btn = document.getElementById('btnKirim');
+    const msg = document.getElementById('msg');
 
     btn.addEventListener('click', () => {
-        if (!navigator.geolocation) {
-            showStatus("Browser tidak mendukung GPS", "error");
-            return;
-        }
+        const nama = document.getElementById('nama').value;
+        if (!nama) { alert("Silakan isi nama terlebih dahulu"); return; }
 
         btn.disabled = true;
-        showStatus("Mengambil GPS...", "loading");
+        showMsg("Mencari sinyal GPS...", "info");
 
         navigator.geolocation.getCurrentPosition(async (pos) => {
-            const { latitude, longitude, accuracy } = pos.coords;
-            showStatus("GPS didapat, mengunggah ke GitHub...", "loading");
+            showMsg("Mengirim data ke sistem...", "info");
             
-            await simpanKeGithub(latitude, longitude, accuracy);
+            try {
+                await fetch(SCRIPT_URL, {
+                    method: 'POST',
+                    mode: 'no-cors',
+                    body: JSON.stringify({
+                        nama: nama,
+                        latitude: pos.coords.latitude,
+                        longitude: pos.coords.longitude,
+                        accuracy: pos.coords.accuracy
+                    })
+                });
+                
+                showMsg("✅ Absensi Berhasil Dicatat!", "info");
+                btn.textContent = "TERKIRIM";
+            } catch (e) {
+                showMsg("❌ Gagal mengirim data", "err");
+                btn.disabled = false;
+            }
         }, (err) => {
-            showStatus("Gagal ambil lokasi: " + err.message, "error");
+            showMsg("Gagal akses lokasi. Pastikan GPS aktif.", "err");
             btn.disabled = false;
         }, { enableHighAccuracy: true });
     });
 
-    async function simpanKeGithub(lat, lng, acc) {
-        const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/contents/${FILE_PATH}`;
-        //const url = `https://api.github.com/repos/${REPO_OWNER}/${REPO_NAME}/${FILE_PATH}`;
-        const timestamp = new Date().toLocaleString('id-ID');
-        const barisBaru = `Waktu: ${timestamp} | Lat: ${lat} | Lng: ${lng} | Acc: ${acc.toFixed(1)}m\n`;
-
-        try {
-            let sha = "";
-            let kontenLama = "";
-
-            // 1. Ambil file lama jika ada (untuk mendapatkan SHA)
-            const getRes = await fetch(url, {
-                headers: { 'Authorization': `token ${GITHUB_TOKEN}` }
-            });
-
-            if (getRes.ok) {
-                const data = await getRes.json();
-                sha = data.sha;
-                kontenLama = atob(data.content); // Decode Base64 ke Teks
-            }
-
-            // 2. Gabungkan data & Encode ke Base64 (Syarat GitHub API)
-            const kontenFinal = btoa(unescape(encodeURIComponent(kontenLama + barisBaru)));
-
-            // 3. Update File
-            const putRes = await fetch(url, {
-                method: 'PUT',
-                headers: {
-                    'Authorization': `token ${GITHUB_TOKEN}`,
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify({
-                    message: "Log lokasi otomatis",
-                    content: kontenFinal,
-                    sha: sha 
-                })
-            });
-
-            if (putRes.ok) {
-                showStatus("Berhasil! Data tersimpan di log_lokasi.txt", "success");
-                btn.textContent = "TERKIRIM";
-            } else {
-                const errData = await putRes.json();
-                showStatus("Gagal Simpan: " + errData.message, "error");
-                btn.disabled = false;
-            }
-
-        } catch (error) {
-            showStatus("Error koneksi API", "error");
-            btn.disabled = false;
-        }
-    }
-
-    function showStatus(text, type) {
-        statusDiv.style.display = "block";
-        statusDiv.className = type;
-        statusDiv.textContent = text;
+    function showMsg(txt, type) {
+        msg.style.display = "block";
+        msg.className = type;
+        msg.textContent = txt;
     }
 </script>
 
