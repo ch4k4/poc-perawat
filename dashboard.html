@@ -29,13 +29,14 @@
 </div>
 
 <div class="main">
-    <div class="user-card">
-        <h3>Selamat Datang, <span id="userName">...</span></h3>
-        <p>Role Anda: <b id="userRole" class="badge">...</b></p>
-        <hr>
-        <div id="contentArea">
-            <p>Pilih menu di samping untuk mengelola data klinik.</p>
-        </div>
+    <div class="header-dashboard">
+        <h3>Portal <span id="userRoleHeader">...</span></h3>
+        <p>User: <b id="userName">...</b></p>
+    </div>
+    
+    <!-- Kontainer Dinamis -->
+    <div id="contentArea" style="height: calc(100vh - 120px); border-radius: 12px; overflow: hidden;">
+        <iframe id="mainFrame" src="about:blank" style="width: 100%; height: 100%; border: none;"></iframe>
     </div>
 </div>
 
@@ -56,13 +57,28 @@
         const res = await fetch(`${SCRIPT_URL}?action=getMenu&role=${user.role}`);
         const menus = await res.json();
         const container = document.getElementById('menuContainer');
-        
-        menus.forEach(m => {
+        const frame = document.getElementById('mainFrame');
+
+        menus.forEach((m, index) => {
             const a = document.createElement('a');
             a.className = 'menu-item';
-            a.href = m.url;
+            a.href = "#"; 
             a.textContent = m.name;
+            
+            // Logika Klik: Ubah src Iframe
+            a.onclick = (e) => {
+                e.preventDefault();
+                frame.src = m.url; // Mengarah ke admin.html atau modul lainnya
+                
+                // Efek Aktif pada Menu
+                document.querySelectorAll('.menu-item').forEach(el => el.classList.remove('active'));
+                a.classList.add('active');
+            };
+
             container.appendChild(a);
+
+            // Load menu pertama secara otomatis sebagai default
+            if(index === 0) a.click();
         });
     }
 
